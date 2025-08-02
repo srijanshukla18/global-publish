@@ -1,0 +1,86 @@
+name: "Hacker News"
+
+culture:
+  values:
+    - technical_depth
+    - intellectual_honesty
+    - substance_over_style
+    - community_contribution
+    - authentic_sharing
+  
+  anti_patterns:
+    - marketing_language
+    - clickbait
+    - emoji
+    - excessive_punctuation
+    - superlatives
+    - sales_pitch
+
+content_rules:
+  title:
+    format: "Show HN: {tool_name} - {one_line_description}"
+    max_length: 80
+    forbidden_words: 
+      - "revolutionary"
+      - "game-changing" 
+      - "disrupt"
+      - "amazing"
+      - "incredible"
+      - "awesome"
+      - "ultimate"
+      - "best"
+      - "perfect"
+    required_elements:
+      - tool_name
+    patterns:
+      - "Show HN: [Tool name] - [what it does]"
+      - "Show HN: [descriptive name] ([technology used])"
+
+  body:
+    structure:
+      - technical_problem
+      - solution_approach
+      - implementation_details
+      - results_metrics
+      - honest_limitations
+    
+    encouraged:
+      - code_snippets
+      - benchmarks
+      - architecture_diagrams
+      - open_source_links
+      - technical_challenges
+    
+    discouraged:
+      - marketing_copy
+      - feature_lists
+      - pricing_info
+      - call_to_action
+
+timing:
+  optimal_hours_pt: [9, 10, 11, 12]
+  optimal_days: ["monday", "tuesday", "wednesday", "thursday"]
+  avoid_days: ["friday", "saturday", "sunday"]
+  avoid_hours_pt: [0, 1, 2, 3, 4, 5, 6, 22, 23]
+
+submission_guidelines:
+  - "Post when you can engage in comments for first hour"
+  - "Be transparent about your affiliation" 
+  - "Include technical details and honest limitations"
+  - "Engage respectfully with criticism"
+  - "Don't ask for upvotes or share direct links"
+
+examples:
+  successful:
+    - title: "Show HN: SQLite-based job queue with 1M jobs/sec"
+      notes: "Technical achievement, specific metrics, clear tool name"
+    - title: "Show HN: Open-source alternative to Datadog"
+      notes: "Clear positioning, familiar reference point"
+    - title: "Show HN: Git workflow for designers"
+      notes: "Specific audience, addresses real problem"
+  
+  unsuccessful:
+    - title: "Revolutionary new database that will change everything!"
+      issues: ["marketing language", "superlatives", "no specifics"]
+    - title: "Check out my awesome app"
+      issues: ["vague", "self-promotional", "no technical detail"]
