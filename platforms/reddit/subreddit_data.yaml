@@ -1,0 +1,98 @@
+subreddits:
+  programming:
+    name: "r/programming"
+    rules:
+      self_promotion: "allowed_sparingly"
+      karma_requirement: 100
+      account_age_days: 30
+      format: "text_post_with_link"
+    culture:
+      - technical_depth_required
+      - no_beginner_questions
+      - substantial_projects_only
+    optimal_times_utc: [14, 15, 16, 17, 18]  # Peak US hours
+    tags: ["programming", "software", "development", "code"]
+    
+  webdev:
+    name: "r/webdev"
+    rules:
+      self_promotion: "allowed_weekly"
+      karma_requirement: 50
+      account_age_days: 14
+      format: "link_or_text"
+    culture:
+      - beginner_friendly
+      - tools_and_resources_welcome
+      - showcase_projects
+    optimal_times_utc: [13, 14, 15, 16, 19, 20]
+    tags: ["web", "frontend", "backend", "javascript", "react"]
+    
+  sideproject:
+    name: "r/SideProject"
+    rules:
+      self_promotion: "encouraged"
+      karma_requirement: 10
+      account_age_days: 7
+      format: "showcase_format"
+    culture:
+      - entrepreneur_friendly
+      - feedback_seeking
+      - mvp_launches
+    optimal_times_utc: [15, 16, 17, 18]
+    tags: ["startup", "mvp", "launch", "entrepreneur"]
+    
+  indiehackers:
+    name: "r/indiehackers"
+    rules:
+      self_promotion: "encouraged"
+      karma_requirement: 0
+      account_age_days: 1
+      format: "story_format"
+    culture:
+      - revenue_focused
+      - bootstrapping
+      - growth_metrics
+    optimal_times_utc: [14, 15, 16, 17]
+    tags: ["indie", "revenue", "bootstrapped", "saas"]
+    
+  entrepreneur:
+    name: "r/Entrepreneur"
+    rules:
+      self_promotion: "limited"
+      karma_requirement: 200
+      account_age_days: 60
+      format: "educational_content"
+    culture:
+      - business_lessons
+      - scaling_advice
+      - market_insights
+    optimal_times_utc: [13, 14, 15, 16]
+    tags: ["business", "scaling", "marketing", "growth"]
+    
+  saas:
+    name: "r/SaaS"
+    rules:
+      self_promotion: "allowed_with_context"
+      karma_requirement: 100
+      account_age_days: 30
+      format: "case_study"
+    culture:
+      - metrics_driven
+      - b2b_focused
+      - technical_business
+    optimal_times_utc: [14, 15, 16, 17]
+    tags: ["saas", "b2b", "subscription", "cloud"]
+
+content_types:
+  tool:
+    primary: ["programming", "webdev", "sideproject"]
+    secondary: ["indiehackers", "saas"]
+  tutorial:
+    primary: ["programming", "webdev"]
+    secondary: ["entrepreneur"]
+  analysis:
+    primary: ["programming", "entrepreneur"]
+    secondary: ["saas"]
+  announcement:
+    primary: ["sideproject", "indiehackers"]
+    secondary: ["webdev", "saas"]

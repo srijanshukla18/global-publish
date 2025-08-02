@@ -1,0 +1,133 @@
+import json
+import requests
+import os
+from typing import Dict, Any
+from pathlib import Path
+
+from core.platform_engine import PlatformAdapter
+from core.models import ContentDNA, PlatformContent, ValidationResult, PublishResult
+from .validator import HackerNewsValidator
+
+
+class HackernewsAdapter(PlatformAdapter):
+    """Hacker News platform adapter with cultural awareness"""
+    
+    def __init__(self, config_dir: Path):
+        super().__init__(config_dir)
+        self.validator = HackerNewsValidator(self.profile)
+    
+    def generate_content(self, content_dna: ContentDNA, api_key: str) -> PlatformContent:
+        """Generate HN-specific content following community guidelines"""
+        prompt = self._build_hn_prompt(content_dna)
+        
+        result = self._make_llm_call(prompt, api_key)
+        
+        return PlatformContent(
+            platform="hackernews",
+            title=result.get("title", ""),
+            body=result.get("body", ""),
+            metadata=result.get("metadata", {}),
+            validation=ValidationResult(is_valid=False, warnings=[], errors=[], suggestions=[])
+        )
+    
+    def _build_hn_prompt(self, content_dna: ContentDNA) -> str:
+        """Build HN-specific prompt with cultural context"""
+        return f"""
+You are writing for Hacker News, a technical community that values:
+- Technical depth over marketing fluff
+- Honest discussion of limitations
+- Substance over style
+- Intellectual curiosity
+
+STRICT RULES:
+- Title MUST start with "Show HN:" for tools
+- Title MUST be ≤60 characters
+- NO marketing words: {', '.join(self.profile['content_rules']['title']['forbidden_words'])}
+- NO emoji, excessive punctuation, or superlatives
+- Format: "Show HN: [Tool name] - [what it does technically]"
+
+Content DNA:
+- Value: {content_dna.value_proposition}
+- Problem: {content_dna.problem_solved}
+- Technical: {', '.join(content_dna.technical_details[:3])}
+- Audience: {content_dna.target_audience}
+- Type: {content_dna.content_type}
+- Limitations: {', '.join(content_dna.limitations)}
+
+Body should include:
+1. Technical problem you solved
+2. Your approach/implementation
+3. Key technical details or challenges
+4. Honest limitations or areas for improvement
+5. Invite technical discussion
+
+Write in a humble, technical tone. Focus on the engineering, not the marketing.
+
+Return JSON:
+{{
+  "title": "Show HN: [exact title]",
+  "body": "Technical explanation...",
+  "metadata": {{"category": "Show HN", "target_engagement": "technical_discussion"}}
+}}
+"""
+    
+    def validate_content(self, content: PlatformContent) -> ValidationResult:
+        """Validate content using HN-specific rules"""
+        return self.validator.validate(content)
+    
+    def post_content(self, content: PlatformContent) -> PublishResult:
+        """Post to Hacker News using cookie authentication"""
+        try:
+            # Get HN cookie from environment
+            hn_cookie = os.environ.get("HN_COOKIE")
+            if not hn_cookie:
+                return PublishResult(
+                    platform="hackernews",
+                    success=False,
+                    error="HN_COOKIE environment variable not set"
+                )
+            
+            # Prepare session
+            session = requests.Session()
+            session.headers.update({
+                "User-Agent": "smart-launch-pipeline/1.0"
+            })
+            session.cookies.set("user", hn_cookie)
+            
+            # Get canonical URL from metadata or use placeholder
+            url = content.metadata.get("canonical_url", "https://example.com")
+            
+            # Submit to HN
+            response = session.post(
+                "https://news.ycombinator.com/submit",
+                data={
+                    "title": content.title,
+                    "url": url
+                },
+                allow_redirects=True
+            )
+            
+            # Check if submission was successful
+            if response.status_code == 200 and "item?id=" in response.url:
+                hn_id = response.url.split("id=")[-1]
+                hn_url = f"https://news.ycombinator.com/item?id={hn_id}"
+                
+                return PublishResult(
+                    platform="hackernews", 
+                    success=True,
+                    url=hn_url,
+                    metadata={"hn_id": hn_id}
+                )
+            else:
+                return PublishResult(
+                    platform="hackernews",
+                    success=False,
+                    error="Submission failed - check cookie validity or rate limits"
+                )
+                
+        except Exception as e:
+            return PublishResult(
+                platform="hackernews",
+                success=False,
+                error=f"HN posting error: {str(e)}"
+            )

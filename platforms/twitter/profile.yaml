@@ -1,0 +1,64 @@
+name: "Twitter/X"
+
+culture:
+  values:
+    - quick_engagement
+    - visual_content
+    - conversation_starters
+    - authentic_voice
+    - trending_topics
+  
+  anti_patterns:
+    - wall_of_text
+    - no_visuals
+    - too_formal
+    - hashtag_spam
+    - self_promotion_only
+
+content_rules:
+  tweet:
+    max_length: 280
+    optimal_length: 250
+    hashtag_limit: 3
+    mention_limit: 2
+  
+  thread:
+    max_tweets: 10
+    hook_tweet_length: 240
+    conclusion_tweet_required: true
+    
+  engagement:
+    call_to_action: "subtle"
+    question_format: "encouraged"
+    visual_content: "required"
+
+thread_structure:
+  hook:
+    purpose: "grab_attention"
+    elements: ["surprising_fact", "problem_statement", "bold_claim"]
+    length: 240
+  
+  body:
+    purpose: "explain_solution"
+    elements: ["technical_details", "implementation", "results"]
+    tweets: 3-5
+  
+  conclusion:
+    purpose: "engagement_driver"
+    elements: ["call_to_action", "question", "link"]
+    length: 260
+
+timing:
+  optimal_hours_utc: [13, 14, 15, 16, 17, 18, 19, 20]  # US peak hours
+  optimal_days: ["tuesday", "wednesday", "thursday"]
+  avoid_hours_utc: [1, 2, 3, 4, 5, 6, 7, 8]
+
+hashtag_strategy:
+  tech: ["#buildinpublic", "#indiehacker", "#coding", "#startup"]
+  audience: ["#developers", "#founders", "#tech", "#programming"]
+  trending: []  # Updated dynamically
+
+visual_content:
+  types: ["screenshot", "diagram", "code_snippet", "metrics"]
+  requirements: "at_least_one_per_thread"
+  tools: ["playwright_screenshot", "carbon_code", "figma_export"]
