@@ -1,11 +1,9 @@
-import os
 import json
-import requests
 from typing import Dict, Any
 from pathlib import Path
 
 from core.platform_engine import PlatformAdapter
-from core.models import ContentDNA, PlatformContent, ValidationResult, PublishResult
+from core.models import ContentDNA, PlatformContent, ValidationResult
 
 
 class MediumAdapter(PlatformAdapter):
@@ -13,7 +11,6 @@ class MediumAdapter(PlatformAdapter):
     
     def __init__(self, config_dir: Path):
         super().__init__(config_dir)
-        self.api_base = "https://api.medium.com/v1"
         
     def generate_content(self, content_dna: ContentDNA, api_key: str) -> PlatformContent:
         """Generate Medium article optimized for SEO and engagement"""
@@ -123,81 +120,3 @@ Return JSON:
             errors=errors,
             suggestions=suggestions
         )
-    
-    def post_content(self, content: PlatformContent) -> PublishResult:
-        """Post article to Medium (Note: Medium API is deprecated)"""
-        try:
-            medium_token = os.environ.get("MEDIUM_TOKEN")
-            medium_user_id = os.environ.get("MEDIUM_USER_ID")
-            
-            if not medium_token or not medium_user_id:
-                return PublishResult(
-                    platform="medium",
-                    success=False,
-                    error="MEDIUM_TOKEN and MEDIUM_USER_ID environment variables required"
-                )
-            
-            # Prepare article data
-            article_data = {
-                "title": content.title,
-                "contentFormat": "markdown",
-                "content": content.body,
-                "publishStatus": "public"
-            }
-            
-            # Add tags if available
-            tags = content.metadata.get("tags", [])
-            if tags:
-                article_data["tags"] = tags[:5]  # Medium only uses first 5
-            
-            # Add canonical URL if available
-            canonical_url = content.metadata.get("canonical_url")
-            if canonical_url:
-                article_data["canonicalUrl"] = canonical_url
-            
-            # Post to Medium
-            headers = {
-                "Authorization": f"Bearer {medium_token}",
-                "Content-Type": "application/json"
-            }
-            
-            response = requests.post(
-                f"{self.api_base}/users/{medium_user_id}/posts",
-                headers=headers,
-                json=article_data
-            )
-            
-            if response.status_code == 201:
-                result = response.json()
-                article_url = result["data"]["url"]
-                
-                return PublishResult(
-                    platform="medium",
-                    success=True,
-                    url=article_url,
-                    metadata={
-                        "article_id": result["data"]["id"],
-                        "published_at": result["data"]["publishedAt"]
-                    }
-                )
-            else:
-                error_msg = f"Medium API error: {response.status_code}"
-                if response.text:
-                    try:
-                        error_data = response.json()
-                        error_msg += f" - {error_data.get('errors', [{}])[0].get('message', 'Unknown error')}"
-                    except:
-                        error_msg += f" - {response.text[:200]}"
-                
-                return PublishResult(
-                    platform="medium",
-                    success=False,
-                    error=error_msg
-                )
-            
-        except Exception as e:
-            return PublishResult(
-                platform="medium",
-                success=False,
-                error=f"Medium posting error: {str(e)}"
-            )

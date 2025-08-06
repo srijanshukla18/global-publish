@@ -1,10 +1,7 @@
-import os
-import time
 from pathlib import Path
-from playwright.sync_api import sync_playwright
 
 from core.platform_engine import PlatformAdapter
-from core.models import ContentDNA, PlatformContent, ValidationResult, PublishResult
+from core.models import ContentDNA, PlatformContent, ValidationResult
 
 
 class PeerlistAdapter(PlatformAdapter):
@@ -113,56 +110,3 @@ Return JSON:
             errors=errors,
             suggestions=suggestions
         )
-    
-    def post_content(self, content: PlatformContent) -> PublishResult:
-        """Post to Peerlist using headless browser automation"""
-        try:
-            # Note: This is a simplified version since Peerlist doesn't have a public API
-            # In a real implementation, you'd need to handle login and navigate the UI
-            
-            return PublishResult(
-                platform="peerlist",
-                success=False,
-                error="Peerlist posting requires manual implementation with browser automation. "
-                      "The platform doesn't have a public API. You would need to implement "
-                      "Playwright automation to log in and post content."
-            )
-            
-            # Below is pseudo-code for what the implementation would look like:
-            """
-            with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
-                page = browser.new_page()
-                
-                # Navigate to Peerlist
-                page.goto("https://peerlist.io/new")
-                
-                # Handle login (would need credentials)
-                # page.fill("input[type='email']", email)
-                # page.fill("input[type='password']", password)
-                # page.click("button[type='submit']")
-                
-                # Fill post content
-                # page.fill("textarea", content.body)
-                
-                # Submit post
-                # page.click("button:text('Publish')")
-                
-                # Wait for success
-                # page.wait_for_timeout(3000)
-                
-                browser.close()
-                
-                return PublishResult(
-                    platform="peerlist",
-                    success=True,
-                    url="https://peerlist.io/post/your-post-id"
-                )
-            """
-            
-        except Exception as e:
-            return PublishResult(
-                platform="peerlist",
-                success=False,
-                error=f"Peerlist posting error: {str(e)}"
-            )

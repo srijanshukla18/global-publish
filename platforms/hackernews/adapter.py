@@ -1,11 +1,7 @@
-import json
-import requests
-import os
-from typing import Dict, Any
 from pathlib import Path
 
 from core.platform_engine import PlatformAdapter
-from core.models import ContentDNA, PlatformContent, ValidationResult, PublishResult
+from core.models import ContentDNA, PlatformContent, ValidationResult
 from .validator import HackerNewsValidator
 
 
@@ -74,60 +70,3 @@ Return JSON:
     def validate_content(self, content: PlatformContent) -> ValidationResult:
         """Validate content using HN-specific rules"""
         return self.validator.validate(content)
-    
-    def post_content(self, content: PlatformContent) -> PublishResult:
-        """Post to Hacker News using cookie authentication"""
-        try:
-            # Get HN cookie from environment
-            hn_cookie = os.environ.get("HN_COOKIE")
-            if not hn_cookie:
-                return PublishResult(
-                    platform="hackernews",
-                    success=False,
-                    error="HN_COOKIE environment variable not set"
-                )
-            
-            # Prepare session
-            session = requests.Session()
-            session.headers.update({
-                "User-Agent": "smart-launch-pipeline/1.0"
-            })
-            session.cookies.set("user", hn_cookie)
-            
-            # Get canonical URL from metadata or use placeholder
-            url = content.metadata.get("canonical_url", "https://example.com")
-            
-            # Submit to HN
-            response = session.post(
-                "https://news.ycombinator.com/submit",
-                data={
-                    "title": content.title,
-                    "url": url
-                },
-                allow_redirects=True
-            )
-            
-            # Check if submission was successful
-            if response.status_code == 200 and "item?id=" in response.url:
-                hn_id = response.url.split("id=")[-1]
-                hn_url = f"https://news.ycombinator.com/item?id={hn_id}"
-                
-                return PublishResult(
-                    platform="hackernews", 
-                    success=True,
-                    url=hn_url,
-                    metadata={"hn_id": hn_id}
-                )
-            else:
-                return PublishResult(
-                    platform="hackernews",
-                    success=False,
-                    error="Submission failed - check cookie validity or rate limits"
-                )
-                
-        except Exception as e:
-            return PublishResult(
-                platform="hackernews",
-                success=False,
-                error=f"HN posting error: {str(e)}"
-            )

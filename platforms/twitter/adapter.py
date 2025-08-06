@@ -1,11 +1,9 @@
-import os
 import json
-import requests
 from typing import Dict, Any, List
 from pathlib import Path
 
 from core.platform_engine import PlatformAdapter
-from core.models import ContentDNA, PlatformContent, ValidationResult, PublishResult
+from core.models import ContentDNA, PlatformContent, ValidationResult
 
 
 class TwitterAdapter(PlatformAdapter):
@@ -13,7 +11,6 @@ class TwitterAdapter(PlatformAdapter):
     
     def __init__(self, config_dir: Path):
         super().__init__(config_dir)
-        self.api_base = "https://api.twitter.com/2"
         
     def generate_content(self, content_dna: ContentDNA, api_key: str) -> PlatformContent:
         """Generate Twitter thread content optimized for engagement"""
@@ -150,91 +147,3 @@ Return JSON:
             errors=errors,
             suggestions=suggestions
         )
-    
-    def post_content(self, content: PlatformContent) -> PublishResult:
-        """Post Twitter thread"""
-        try:
-            bearer_token = os.environ.get("TWITTER_BEARER_TOKEN")
-            if not bearer_token:
-                return PublishResult(
-                    platform="twitter",
-                    success=False,
-                    error="TWITTER_BEARER_TOKEN environment variable not set"
-                )
-            
-            thread = content.metadata.get("thread", [])
-            if not thread:
-                return PublishResult(
-                    platform="twitter",
-                    success=False,
-                    error="No thread content to post"
-                )
-            
-            # Post tweets in sequence
-            posted_tweets = []
-            previous_tweet_id = None
-            
-            headers = {
-                "Authorization": f"Bearer {bearer_token}",
-                "Content-Type": "application/json"
-            }
-            
-            for tweet_data in thread:
-                tweet_content = tweet_data.get('content', '')
-                
-                # Prepare tweet payload
-                payload = {"text": tweet_content}
-                
-                # Add reply reference for threading (except first tweet)
-                if previous_tweet_id:
-                    payload["reply"] = {"in_reply_to_tweet_id": previous_tweet_id}
-                
-                # Post tweet
-                response = requests.post(
-                    f"{self.api_base}/tweets",
-                    headers=headers,
-                    json=payload
-                )
-                
-                if response.status_code == 201:
-                    tweet_response = response.json()
-                    tweet_id = tweet_response["data"]["id"]
-                    tweet_url = f"https://twitter.com/user/status/{tweet_id}"
-                    
-                    posted_tweets.append({
-                        "tweet_number": tweet_data.get('tweet_number'),
-                        "tweet_id": tweet_id,
-                        "url": tweet_url,
-                        "content": tweet_content[:50] + "..."
-                    })
-                    
-                    previous_tweet_id = tweet_id
-                    
-                else:
-                    error_msg = f"Tweet {tweet_data.get('tweet_number')} failed: {response.status_code}"
-                    return PublishResult(
-                        platform="twitter",
-                        success=False,
-                        error=error_msg,
-                        metadata={"partial_posts": posted_tweets}
-                    )
-            
-            # Return success with thread URL (first tweet)
-            thread_url = posted_tweets[0]["url"] if posted_tweets else "Unknown"
-            
-            return PublishResult(
-                platform="twitter",
-                success=True,
-                url=thread_url,
-                metadata={
-                    "thread_count": len(posted_tweets),
-                    "all_tweets": posted_tweets
-                }
-            )
-            
-        except Exception as e:
-            return PublishResult(
-                platform="twitter",
-                success=False,
-                error=f"Twitter posting error: {str(e)}"
-            )

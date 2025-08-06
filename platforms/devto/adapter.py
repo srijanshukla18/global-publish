@@ -1,11 +1,9 @@
-import os
 import json
-import requests
 from typing import Dict, Any
 from pathlib import Path
 
 from core.platform_engine import PlatformAdapter
-from core.models import ContentDNA, PlatformContent, ValidationResult, PublishResult
+from core.models import ContentDNA, PlatformContent, ValidationResult
 
 
 class DevtoAdapter(PlatformAdapter):
@@ -13,7 +11,6 @@ class DevtoAdapter(PlatformAdapter):
     
     def __init__(self, config_dir: Path):
         super().__init__(config_dir)
-        self.api_base = "https://dev.to/api"
         
     def generate_content(self, content_dna: ContentDNA, api_key: str) -> PlatformContent:
         """Generate dev.to article optimized for developer community"""
@@ -138,95 +135,3 @@ Return JSON:
             errors=errors,
             suggestions=suggestions
         )
-    
-    def post_content(self, content: PlatformContent) -> PublishResult:
-        """Post article to dev.to"""
-        try:
-            devto_api_key = os.environ.get("DEVTO_API_KEY")
-            
-            if not devto_api_key:
-                return PublishResult(
-                    platform="devto",
-                    success=False,
-                    error="DEVTO_API_KEY environment variable required"
-                )
-            
-            # Prepare front matter for canonical URL
-            canonical_url = content.metadata.get("canonical_url")
-            front_matter = ""
-            if canonical_url:
-                front_matter = f"---\ncanonical_url: {canonical_url}\n---\n\n"
-            
-            # Prepare article data
-            article_data = {
-                "article": {
-                    "title": content.title,
-                    "body_markdown": front_matter + content.body,
-                    "published": True
-                }
-            }
-            
-            # Add optional fields
-            description = content.metadata.get("description")
-            if description:
-                article_data["article"]["description"] = description
-            
-            tags = content.metadata.get("tags", [])
-            if tags:
-                article_data["article"]["tags"] = tags[:4]  # dev.to allows max 4 tags
-            
-            cover_image = content.metadata.get("cover_image")
-            if cover_image:
-                article_data["article"]["main_image"] = cover_image
-            
-            series = content.metadata.get("series")
-            if series:
-                article_data["article"]["series"] = series
-            
-            # Post to dev.to
-            headers = {
-                "api-key": devto_api_key,
-                "Content-Type": "application/json"
-            }
-            
-            response = requests.post(
-                f"{self.api_base}/articles",
-                headers=headers,
-                json=article_data
-            )
-            
-            if response.status_code == 201:
-                result = response.json()
-                article_url = result["url"]
-                
-                return PublishResult(
-                    platform="devto",
-                    success=True,
-                    url=article_url,
-                    metadata={
-                        "article_id": result["id"],
-                        "slug": result["slug"],
-                        "published_at": result["published_at"]
-                    }
-                )
-            else:
-                error_msg = f"dev.to API error: {response.status_code}"
-                if response.text:
-                    try:
-                        error_data = response.json()
-                        error_msg += f" - {error_data.get('error', 'Unknown error')}"
-                    except:
-                        error_msg += f" - {response.text[:200]}"
-                
-                return PublishResult(
-                    platform="devto",
-                    success=False,
-                    error=error_msg
-                )
-            
-        except Exception as e:
-            return PublishResult(
-                platform="devto",
-                success=False,
-                error=f"dev.to posting error: {str(e)}"
-            )

@@ -1,93 +1,92 @@
 # Global Publisher 🚀
 
-An intelligent multi-platform content publishing system that adapts your content to each platform's unique culture and requirements.
+An intelligent multi-platform content generator that adapts your content to each platform's unique culture and requirements.
+
+## What Problem Does It Solve?
+
+Manually tailoring content for different social media platforms is a tedious and time-consuming process. A technical blog post written for Medium or Dev.to cannot be simply copy-pasted to Twitter, Reddit, or Hacker News. Each platform has its own unique culture, formatting constraints, and audience expectations.
+
+- **Twitter** requires concise threads with engaging hooks.
+- **Reddit** demands adherence to specific subreddit rules and community etiquette.
+- **Hacker News** values technical depth and intellectual honesty.
+- **LinkedIn** prefers a professional tone and focuses on career-related insights.
+
+Rewriting the same core message for each platform is a repetitive task that stifles creativity and slows down content velocity. This project solves that problem by automating the adaptation process. It takes a single piece of content and intelligently generates optimized versions for multiple platforms, saving you hours of manual work.
 
 ## ✨ Features
 
 - **Two-Phase LLM Architecture**: Extract content DNA, then generate platform-optimized versions
 - **Platform-Aware Adaptation**: Each platform has its own cultural profile and optimization rules
-- **Smart Scheduling**: Timing analysis with warnings and user confirmation
-- **Intelligent Caching**: Avoid re-generating content and enable failed post recovery
-- **CLI Interface**: Full command-line interface with preview, dry-run, and scheduling modes
+- **Intelligent Caching**: Avoid re-generating content with smart caching
+- **Manual Mode**: LLM generates tailored content, you copy and paste to each platform
 
 ## 🏗️ Architecture
 
 ```
-Content File → DNA Extraction → Platform Adapters → Validation → Publishing
-                      ↓
-               Intelligent Caching & Recovery System
+Content File → DNA Extraction → Platform Adapters → Manual Instructions
+                     ↓
+              Intelligent Caching System
 ```
 
 ### Supported Platforms
 
-- **Hacker News**: Technical depth, intellectual honesty, weekend warnings
+- **Hacker News**: Technical depth, intellectual honesty
 - **Reddit**: Smart subreddit selection, community rules compliance  
-- **Twitter/X**: Thread optimization, engagement hooks, visual suggestions
+- **Twitter/X**: Thread optimization, engagement hooks
 - **Medium**: SEO optimization, personal narrative, long-form structure
 - **Dev.to**: Beginner-friendly tutorials, code examples, community focus
 - **Peerlist**: Professional achievements, technical showcases
 
-## 🚀 Quick Start
+## 🚀 Getting Started
 
-### Installation
-
-```bash
-# Clone and install dependencies
-git clone <repo-url>
-cd global-publish
-pip install -r requirements.txt
-
-# Set up your API keys
-export OPENAI_API_KEY="your-key"
-export TWITTER_BEARER_TOKEN="your-token"
-export REDDIT_CLIENT_ID="your-id"
-export REDDIT_CLIENT_SECRET="your-secret"
-export MEDIUM_TOKEN="your-token"
-export DEVTO_API_KEY="your-key"
-```
-
-### Basic Usage
+### 1. Installation
 
 ```bash
-# Preview content for all platforms
-python main.py sample_content.md --all-platforms --preview
+# Install uv (if you don't have it)
+pip install uv
 
-# Post to specific platforms with timing check
-python main.py content.md --platforms hackernews reddit twitter
-
-# Show optimal posting schedule
-python main.py content.md --platforms medium devto --schedule
-
-# Dry run (no actual posting)
-python main.py content.md --all-platforms --dry-run
-
-# Skip timing warnings
-python main.py content.md --platforms twitter --no-timing-check
+# Create a virtual environment and install dependencies
+uv venv
+uv pip install -r requirements.txt
 ```
 
-### Cache and Recovery
+### 2. Configuration
+
+Set up your API key by creating a `.env` file. You can copy the example file first.
 
 ```bash
-# Show cache statistics
-python main.py --cache-stats
-
-# Retry failed posts
-python main.py --retry
-
-# Clean up expired cache
-python main.py --cleanup-cache
+# Set up your API key
+echo "GEMINI_API_KEY='your-api-key-here'" > .env
 ```
+
+### 3. Basic Usage
+
+To generate content for all supported platforms, provide a markdown file as an argument to the `run.sh` script.
+
+```bash
+# Generate content for all platforms
+./run.sh content.md
+```
+
+You can also specify which platforms to generate content for:
+
+```bash
+# Generate content for specific platforms
+./run.sh content.md --platforms hackernews reddit twitter
+```
+
+Or use a different LLM model:
+
+```bash
+# Use a different LLM model
+./run.sh content.md --model claude-3-opus
+```
+
+The generated content will be saved in the `manual_content/` directory.
 
 ## 📝 Content Format
 
-Your content file can be markdown with any structure. The system extracts:
-
-- **Value Proposition**: Core benefit/solution
-- **Problem Solved**: What issue this addresses  
-- **Technical Details**: Implementation specifics
-- **Target Audience**: Who this is for
-- **Unique Aspects**: What makes it different
-- **Limitations**: Honest caveats
+Your content file can be markdown with any structure. This will be provided to the LLM along with the platform-specific guidelines.
 
 Example content structure:
 ```markdown
@@ -106,149 +105,33 @@ Example content structure:
 [Outcomes, metrics, lessons learned]
 ```
 
-## 🎯 Platform Optimization
+## 🎯 Platform Guidelines
 
-### Hacker News
-- Technical depth over marketing fluff
-- Substance-focused titles (≤60 chars)
-- Weekend posting warnings
-- Intellectual honesty emphasis
+The system uses markdown files in the `platforms_content/` directory to define the guidelines for each platform. Each file (e.g., `platforms_content/twitter.md`) contains instructions on how to adapt the input content for that specific platform.
 
-### Twitter/X
-- Engagement-optimized threads
-- Hook → Problem → Solution → Results → CTA structure
-- Visual content suggestions
-- Character limit validation
+## 🧠 How It Works
 
-### Reddit
-- Automatic subreddit selection based on content
-- Community-specific tone adaptation
-- Self-promotion rules compliance
-- Optimal timing by subreddit
-
-### Medium
-- SEO-optimized titles and structure
-- Personal narrative integration
-- Long-form article formatting
-- Canonical URL handling
-
-### Dev.to
-- Beginner-friendly explanations
-- Code example requirements
-- Tutorial structure optimization
-- Community engagement focus
-
-### Peerlist
-- Professional achievement framing
-- Technical skill highlights
-- Career growth narratives
-- Browser automation (no API)
-
-## 🧠 Intelligent Features
-
-### Content DNA Extraction
-Analyzes your content to understand:
-- Core value proposition
-- Technical implementation details
-- Problem being solved
-- Target audience
-- Unique differentiators
-- Honest limitations
-
-### Platform Cultural Profiles
-Each platform has detailed cultural rules:
-```yaml
-culture:
-  values:
-    - technical_depth
-    - intellectual_honesty
-  anti_patterns:
-    - marketing_fluff
-    - clickbait_titles
-  timing:
-    optimal_hours: [16, 17, 18, 19]
-    avoid_weekends: true
-```
-
-### Smart Scheduling
-- Platform-specific optimal posting times
-- Local time analysis and warnings
-- Weekend posting recommendations
-- User confirmation for suboptimal timing
-
-### Caching System
-- **DNA Cache**: Avoid re-analyzing same content (24h TTL)
-- **Content Cache**: Store generated platform content (6h TTL)
-- **Failed Post Recovery**: Automatic retry with exponential backoff
-- **Results Archive**: Complete audit trail
+### Manual Content Generation
+1. The system reads your input content file.
+2. For each platform markdown file in `platforms_content/`, it combines your input content with the platform's guidelines into a single prompt.
+3. This combined prompt is sent to the LLM (via LiteLLM) to generate the platform-specific post.
+4. Clear instructions are provided for manual posting on each platform.
+5. Content is saved to `manual_content/` directory for easy access.
 
 ## 🔧 Configuration
 
 ### Environment Variables
 ```bash
 # Required
-OPENAI_API_KEY="sk-..."
-
-# Platform APIs (as needed)
-TWITTER_BEARER_TOKEN="..."
-REDDIT_CLIENT_ID="..."
-REDDIT_CLIENT_SECRET="..."
-REDDIT_USERNAME="..."
-REDDIT_PASSWORD="..."
-MEDIUM_TOKEN="..."
-MEDIUM_USER_ID="..."
-DEVTO_API_KEY="..."
-HN_COOKIE="..."  # From browser after login
+GEMINI_API_KEY="your-api-key-here"
 ```
-
-### Platform Configuration
-Each platform has its own configuration in `platforms/{platform}/`:
-- `profile.yaml`: Cultural rules and timing
-- `adapter.py`: Platform-specific logic
-- `subreddit_data.yaml`: Reddit-specific rules (for Reddit)
-
-## 📊 Monitoring
-
-### Cache Statistics
-```bash
-python main.py --cache-stats
-```
-Shows:
-- Memory cache size and hit rate
-- File cache sizes (DNA, content, results)
-- Failed posts pending retry
-- Total cache storage usage
-
-### Failed Post Recovery
-The system automatically:
-1. Saves failed posts with error details
-2. Calculates retry timing (1min → 5min → 30min)
-3. Allows manual retry of ready posts
-4. Tracks attempt count and max retries
-
-### Results Archive
-Every publishing session creates:
-- Timestamped results file
-- Success/failure status per platform
-- Error messages and metadata
-- Complete audit trail
 
 ## 🛠️ Development
 
 ### Adding New Platforms
 
-1. Create platform directory: `platforms/newplatform/`
-2. Add `profile.yaml` with cultural rules
-3. Implement `adapter.py` extending `PlatformAdapter`
-4. Add validation rules and posting logic
-5. Update main CLI platform list
-
-### Extending Features
-
-- **New validation rules**: Add to platform adapter `validate_content()`
-- **Custom prompts**: Modify `_build_platform_prompt()` methods
-- **New cache types**: Extend `CacheManager` class
-- **Scheduling rules**: Update `SmartScheduler` optimal times
+1. Create a new markdown file in `platforms_content/` (e.g., `platforms_content/new_platform.md`).
+2. Add the specific guidelines and rules for that platform within the markdown file.
 
 ## 🤝 Contributing
 
@@ -266,10 +149,9 @@ MIT License - see LICENSE file for details
 
 Built with:
 - OpenAI GPT-4 for content adaptation
-- Platform APIs (Twitter, Reddit, Medium, Dev.to)
-- Playwright for browser automation
+- Python 3.11+
 - Modern Python tooling
 
 ---
 
-**🚀 Transform your content publishing workflow from manual adaptation to intelligent automation.**
+**🚀 Transform your content workflow from manual adaptation to intelligent generation.**

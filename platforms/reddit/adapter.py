@@ -1,11 +1,9 @@
-import os
-import praw
 import json
 from typing import Dict, Any
 from pathlib import Path
 
 from core.platform_engine import PlatformAdapter
-from core.models import ContentDNA, PlatformContent, ValidationResult, PublishResult
+from core.models import ContentDNA, PlatformContent, ValidationResult
 from .analyzer import SubredditAnalyzer
 
 
@@ -15,20 +13,6 @@ class RedditAdapter(PlatformAdapter):
     def __init__(self, config_dir: Path):
         super().__init__(config_dir)
         self.analyzer = SubredditAnalyzer(config_dir)
-        self._reddit_client = None
-    
-    @property
-    def reddit_client(self):
-        """Lazy initialization of Reddit client"""
-        if self._reddit_client is None:
-            self._reddit_client = praw.Reddit(
-                client_id=os.environ.get("REDDIT_CLIENT_ID"),
-                client_secret=os.environ.get("REDDIT_SECRET"),
-                username=os.environ.get("REDDIT_USERNAME"),
-                password=os.environ.get("REDDIT_PASSWORD"),
-                user_agent="smart-launch-pipeline/1.0"
-            )
-        return self._reddit_client
     
     def generate_content(self, content_dna: ContentDNA, api_key: str) -> PlatformContent:
         """Generate Reddit content with smart subreddit selection"""
@@ -231,51 +215,3 @@ class RedditAdapter(PlatformAdapter):
             errors=errors,
             suggestions=suggestions
         )
-    
-    def post_content(self, content: PlatformContent) -> PublishResult:
-        """Post to selected subreddits"""
-        try:
-            variants = content.metadata.get("variants", [])
-            results = []
-            
-            for variant in variants:
-                try:
-                    subreddit_name = variant['subreddit'].replace('r/', '')
-                    subreddit = self.reddit_client.subreddit(subreddit_name)
-                    
-                    # Determine post type based on format
-                    post_format = variant.get('format', 'text_post')
-                    
-                    if 'link' in post_format:
-                        # Link post
-                        canonical_url = content.metadata.get("canonical_url", "https://example.com")
-                        submission = subreddit.submit(
-                            title=variant['title'],
-                            url=canonical_url
-                        )
-                    else:
-                        # Text post
-                        submission = subreddit.submit(
-                            title=variant['title'],
-                            selftext=variant['body']
-                        )
-                    
-                    reddit_url = f"https://reddit.com{submission.permalink}"
-                    results.append(f"{variant['subreddit']}: {reddit_url}")
-                    
-                except Exception as e:
-                    results.append(f"{variant['subreddit']}: Failed - {str(e)}")
-            
-            return PublishResult(
-                platform="reddit",
-                success=True,
-                url=f"Posted to {len(variants)} subreddits",
-                metadata={"individual_results": results}
-            )
-            
-        except Exception as e:
-            return PublishResult(
-                platform="reddit",
-                success=False,
-                error=f"Reddit posting error: {str(e)}"
-            )
