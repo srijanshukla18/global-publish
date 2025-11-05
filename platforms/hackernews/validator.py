@@ -6,9 +6,15 @@ from core.platform_engine import Validator
 
 class HackerNewsValidator(Validator):
     """Validates content for Hacker News submission"""
-    
-    def __init__(self, profile: dict):
-        self.profile = profile
+
+    def __init__(self):
+        # Hardcoded HN rules - no profile needed
+        self.forbidden_words = [
+            'revolutionary', 'game-changing', 'innovative', 'disruptive',
+            'cutting-edge', 'next-generation', 'breakthrough', 'amazing',
+            'incredible', 'ultimate', 'best', 'perfect', 'unique'
+        ]
+        self.max_title_length = 60
     
     def validate(self, content: PlatformContent) -> ValidationResult:
         """Comprehensive validation for HN content"""
@@ -41,17 +47,13 @@ class HackerNewsValidator(Validator):
         errors = []
         warnings = []
         suggestions = []
-        
-        rules = self.profile.get('content_rules', {}).get('title', {})
-        
+
         # Check length
-        max_length = rules.get('max_length', 60)
-        if len(title) > max_length:
-            errors.append(f"Title too long: {len(title)}/{max_length} chars")
-        
+        if len(title) > self.max_title_length:
+            errors.append(f"Title too long: {len(title)}/{self.max_title_length} chars")
+
         # Check forbidden words
-        forbidden = rules.get('forbidden_words', [])
-        for word in forbidden:
+        for word in self.forbidden_words:
             if word.lower() in title.lower():
                 errors.append(f"Contains forbidden marketing word: '{word}'")
         

@@ -8,15 +8,16 @@ from core.models import ContentDNA, PlatformContent, ValidationResult
 
 class MediumAdapter(PlatformAdapter):
     """Medium platform adapter with SEO optimization"""
-    
-    def __init__(self, config_dir: Path):
-        super().__init__(config_dir)
-        
-    def generate_content(self, content_dna: ContentDNA, api_key: str) -> PlatformContent:
+
+    def __init__(self, model="gemini/gemini-2.5-pro", api_key=None):
+        super().__init__(model, api_key)
+
+    def generate_content(self, content_dna: ContentDNA) -> PlatformContent:
         """Generate Medium article optimized for SEO and engagement"""
         prompt = self._build_medium_prompt(content_dna)
-        
-        result = self._make_llm_call(prompt, api_key)
+
+        result_text = self.adapt_content(prompt)
+        result = json.loads(result_text)
         
         return PlatformContent(
             platform="medium",

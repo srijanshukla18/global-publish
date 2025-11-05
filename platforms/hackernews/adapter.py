@@ -7,16 +7,18 @@ from .validator import HackerNewsValidator
 
 class HackernewsAdapter(PlatformAdapter):
     """Hacker News platform adapter with cultural awareness"""
-    
-    def __init__(self, config_dir: Path):
-        super().__init__(config_dir)
-        self.validator = HackerNewsValidator(self.profile)
-    
-    def generate_content(self, content_dna: ContentDNA, api_key: str) -> PlatformContent:
+
+    def __init__(self, model="gemini/gemini-2.5-pro", api_key=None):
+        super().__init__(model, api_key)
+        self.validator = HackerNewsValidator()
+
+    def generate_content(self, content_dna: ContentDNA) -> PlatformContent:
         """Generate HN-specific content following community guidelines"""
         prompt = self._build_hn_prompt(content_dna)
-        
-        result = self._make_llm_call(prompt, api_key)
+
+        result_text = self.adapt_content(prompt)
+        import json
+        result = json.loads(result_text)
         
         return PlatformContent(
             platform="hackernews",
@@ -28,6 +30,11 @@ class HackernewsAdapter(PlatformAdapter):
     
     def _build_hn_prompt(self, content_dna: ContentDNA) -> str:
         """Build HN-specific prompt with cultural context"""
+        forbidden_words = [
+            'revolutionary', 'game-changing', 'innovative', 'disruptive',
+            'cutting-edge', 'next-generation', 'breakthrough', 'amazing',
+            'incredible', 'ultimate', 'best', 'perfect', 'unique'
+        ]
         return f"""
 You are writing for Hacker News, a technical community that values:
 - Technical depth over marketing fluff
@@ -38,7 +45,7 @@ You are writing for Hacker News, a technical community that values:
 STRICT RULES:
 - Title MUST start with "Show HN:" for tools
 - Title MUST be ≤60 characters
-- NO marketing words: {', '.join(self.profile['content_rules']['title']['forbidden_words'])}
+- NO marketing words: {', '.join(forbidden_words)}
 - NO emoji, excessive punctuation, or superlatives
 - Format: "Show HN: [Tool name] - [what it does technically]"
 

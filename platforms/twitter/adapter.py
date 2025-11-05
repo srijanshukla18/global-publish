@@ -8,15 +8,16 @@ from core.models import ContentDNA, PlatformContent, ValidationResult
 
 class TwitterAdapter(PlatformAdapter):
     """Twitter/X platform adapter with thread optimization"""
-    
-    def __init__(self, config_dir: Path):
-        super().__init__(config_dir)
-        
-    def generate_content(self, content_dna: ContentDNA, api_key: str) -> PlatformContent:
+
+    def __init__(self, model="gemini/gemini-2.5-pro", api_key=None):
+        super().__init__(model, api_key)
+
+    def generate_content(self, content_dna: ContentDNA) -> PlatformContent:
         """Generate Twitter thread content optimized for engagement"""
         prompt = self._build_twitter_prompt(content_dna)
-        
-        result = self._make_llm_call(prompt, api_key)
+
+        result_text = self.adapt_content(prompt)
+        result = json.loads(result_text)
         
         return PlatformContent(
             platform="twitter",
@@ -33,14 +34,22 @@ class TwitterAdapter(PlatformAdapter):
     
     def _build_twitter_prompt(self, content_dna: ContentDNA) -> str:
         """Build Twitter-specific prompt for thread generation"""
-        culture = self.profile.get('culture', {})
-        thread_rules = self.profile.get('thread_structure', {})
-        
         return f"""
 You are a Twitter engagement expert creating viral thread content.
 
-Twitter Culture: {json.dumps(culture, indent=2)}
-Thread Structure: {json.dumps(thread_rules, indent=2)}
+Twitter Culture:
+- Fast-paced, attention-grabbing content
+- Emphasizes engagement, retweets, and replies
+- Values authenticity and personality
+- Prefers threads for complex topics
+- Visual content performs well
+
+Thread Structure Best Practices:
+- Hook tweet must grab attention immediately
+- Use numbered threads for clarity
+- Include questions to drive engagement
+- End with clear call-to-action
+- Mix information with personality
 
 Content DNA:
 - Value Prop: {content_dna.value_proposition}
