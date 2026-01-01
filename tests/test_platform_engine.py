@@ -156,7 +156,7 @@ class TestPlatformAdapterLLMCall:
         config_dir.mkdir()
         return ConcretePlatformAdapter(config_dir)
 
-    @patch('core.platform_engine.completion')
+    @patch('litellm.completion')
     def test_make_llm_call_basic(self, mock_completion, adapter):
         """Test basic LLM call."""
         mock_response = MagicMock()
@@ -169,7 +169,7 @@ class TestPlatformAdapterLLMCall:
         assert result["title"] == "Test"
         mock_completion.assert_called_once()
 
-    @patch('core.platform_engine.completion')
+    @patch('litellm.completion')
     def test_make_llm_call_with_system_prompt(self, mock_completion, adapter):
         """Test LLM call with system prompt."""
         mock_response = MagicMock()
@@ -185,7 +185,7 @@ class TestPlatformAdapterLLMCall:
         assert messages[0]["role"] == "system"
         assert messages[1]["role"] == "user"
 
-    @patch('core.platform_engine.completion')
+    @patch('litellm.completion')
     def test_make_llm_call_without_system_prompt(self, mock_completion, adapter):
         """Test LLM call without system prompt."""
         mock_response = MagicMock()
@@ -200,7 +200,7 @@ class TestPlatformAdapterLLMCall:
         assert len(messages) == 1
         assert messages[0]["role"] == "user"
 
-    @patch('core.platform_engine.completion')
+    @patch('litellm.completion')
     def test_make_llm_call_uses_adapter_model(self, mock_completion, adapter):
         """Test LLM call uses adapter's model."""
         adapter.model = "test-model-123"
@@ -215,7 +215,7 @@ class TestPlatformAdapterLLMCall:
         model = call_args.kwargs.get('model', call_args[1].get('model'))
         assert model == "test-model-123"
 
-    @patch('core.platform_engine.completion')
+    @patch('litellm.completion')
     def test_make_llm_call_handles_exception(self, mock_completion, adapter):
         """Test LLM call handles exceptions gracefully."""
         mock_completion.side_effect = Exception("API Error")

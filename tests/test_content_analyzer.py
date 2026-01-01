@@ -19,7 +19,7 @@ class TestContentAnalyzer:
         analyzer = ContentAnalyzer(model="claude-3-opus")
         assert analyzer.model == "claude-3-opus"
 
-    @patch('core.content_analyzer.completion')
+    @patch('litellm.completion')
     def test_analyze_returns_content_dna(self, mock_completion):
         """Test analyze returns ContentDNA object."""
         mock_response = MagicMock()
@@ -43,7 +43,7 @@ class TestContentAnalyzer:
         assert result.value_proposition == "A tool for developers"
         assert "Python" in result.technical_details
 
-    @patch('core.content_analyzer.completion')
+    @patch('litellm.completion')
     def test_analyze_handles_markdown_json_response(self, mock_completion):
         """Test analyze handles JSON in markdown code blocks."""
         mock_response = MagicMock()
@@ -67,7 +67,7 @@ class TestContentAnalyzer:
 
         assert result.value_proposition == "Test value"
 
-    @patch('core.content_analyzer.completion')
+    @patch('litellm.completion')
     def test_analyze_handles_missing_fields(self, mock_completion):
         """Test analyze handles missing fields with defaults."""
         mock_response = MagicMock()
@@ -86,7 +86,7 @@ class TestContentAnalyzer:
         assert result.problem_solved == ""
         assert result.content_type == "announcement"  # Default
 
-    @patch('core.content_analyzer.completion')
+    @patch('litellm.completion')
     def test_analyze_handles_exception(self, mock_completion):
         """Test analyze handles API exceptions gracefully."""
         mock_completion.side_effect = Exception("API Error")
@@ -98,7 +98,7 @@ class TestContentAnalyzer:
         assert "Error" in result.value_proposition
         assert result.technical_details == []
 
-    @patch('core.content_analyzer.completion')
+    @patch('litellm.completion')
     def test_analyze_handles_invalid_json(self, mock_completion):
         """Test analyze handles invalid JSON response."""
         mock_response = MagicMock()
@@ -112,7 +112,7 @@ class TestContentAnalyzer:
         assert isinstance(result, ContentDNA)
         assert "Error" in result.value_proposition
 
-    @patch('core.content_analyzer.completion')
+    @patch('litellm.completion')
     def test_analyze_uses_correct_model(self, mock_completion):
         """Test analyze uses the configured model."""
         mock_response = MagicMock()
@@ -135,7 +135,7 @@ class TestContentAnalyzer:
         call_args = mock_completion.call_args
         assert call_args.kwargs.get('model') == "test-model"
 
-    @patch('core.content_analyzer.completion')
+    @patch('litellm.completion')
     def test_analyze_uses_low_temperature(self, mock_completion):
         """Test analyze uses low temperature for consistency."""
         mock_response = MagicMock()
@@ -160,7 +160,7 @@ class TestContentAnalyzer:
         assert temperature is not None
         assert temperature <= 0.3  # Low temperature for consistency
 
-    @patch('core.content_analyzer.completion')
+    @patch('litellm.completion')
     def test_analyze_includes_content_in_prompt(self, mock_completion):
         """Test analyze includes raw content in prompt."""
         mock_response = MagicMock()
@@ -189,7 +189,7 @@ class TestContentAnalyzer:
 class TestContentAnalyzerPrompt:
     """Tests for ContentAnalyzer prompt construction."""
 
-    @patch('core.content_analyzer.completion')
+    @patch('litellm.completion')
     def test_prompt_requests_all_dna_fields(self, mock_completion):
         """Test prompt requests all ContentDNA fields."""
         mock_response = MagicMock()
@@ -227,7 +227,7 @@ class TestContentAnalyzerPrompt:
         for field in expected_fields:
             assert field in prompt, f"Prompt should request {field}"
 
-    @patch('core.content_analyzer.completion')
+    @patch('litellm.completion')
     def test_prompt_requests_json_format(self, mock_completion):
         """Test prompt requests JSON output format."""
         mock_response = MagicMock()
@@ -257,7 +257,7 @@ class TestContentAnalyzerPrompt:
 class TestContentAnalyzerEdgeCases:
     """Edge case tests for ContentAnalyzer."""
 
-    @patch('core.content_analyzer.completion')
+    @patch('litellm.completion')
     def test_analyze_empty_content(self, mock_completion):
         """Test analyze handles empty content."""
         mock_response = MagicMock()
@@ -279,7 +279,7 @@ class TestContentAnalyzerEdgeCases:
 
         assert isinstance(result, ContentDNA)
 
-    @patch('core.content_analyzer.completion')
+    @patch('litellm.completion')
     def test_analyze_very_long_content(self, mock_completion):
         """Test analyze handles very long content."""
         mock_response = MagicMock()
@@ -302,7 +302,7 @@ class TestContentAnalyzerEdgeCases:
 
         assert isinstance(result, ContentDNA)
 
-    @patch('core.content_analyzer.completion')
+    @patch('litellm.completion')
     def test_analyze_unicode_content(self, mock_completion):
         """Test analyze handles unicode content."""
         mock_response = MagicMock()

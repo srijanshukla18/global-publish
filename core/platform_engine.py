@@ -1,13 +1,17 @@
-
 import yaml
 import json
 import os
+import time
 from pathlib import Path
 from typing import Dict, Any, Optional
 from abc import ABC, abstractmethod
 import openai
 
 from .models import ContentDNA, PlatformContent, ValidationResult
+
+MAX_LLM_RESPONSE_SIZE = 256 * 1024  # 256KB limit for LLM responses
+MAX_RETRIES = 3
+INITIAL_BACKOFF = 1  # seconds
 
 class PlatformAdapter(ABC):
     """Base class for all platform-specific adapters"""
@@ -36,7 +40,7 @@ class PlatformAdapter(ABC):
         pass
         
     def _make_llm_call(self, prompt: str, system_prompt: str = None) -> Dict[str, Any]:
-        """Execute LLM call with error handling and JSON parsing via LiteLLM"""
+        """Execute LLM call with retry, backoff, and JSON parsing via LiteLLM"""
         from litellm import completion
         import re
 
@@ -45,20 +49,35 @@ class PlatformAdapter(ABC):
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
 
-        try:
-            response = completion(
-                model=self.model,
-                messages=messages,
-                temperature=0.7,
-                max_tokens=8000  # Ensure we get full long-form responses
-            )
+        last_error = None
+        for attempt in range(MAX_RETRIES):
+            try:
+                response = completion(
+                    model=self.model,
+                    messages=messages,
+                    temperature=0.7,
+                    max_tokens=8000,
+                    timeout=120  # 2 minute timeout
+                )
 
-            content = response.choices[0].message.content
-            return self._parse_json_response(content)
+                content = response.choices[0].message.content
 
-        except Exception as e:
-            print(f"Error in LLM call: {e}")
-            return {}
+                # Validate response size
+                if len(content.encode('utf-8')) > MAX_LLM_RESPONSE_SIZE:
+                    print(f"Warning: LLM response truncated (exceeded {MAX_LLM_RESPONSE_SIZE} bytes)")
+                    content = content[:MAX_LLM_RESPONSE_SIZE]
+
+                return self._parse_json_response(content)
+
+            except Exception as e:
+                last_error = e
+                if attempt < MAX_RETRIES - 1:
+                    backoff = INITIAL_BACKOFF * (2 ** attempt)
+                    print(f"   Retry {attempt + 1}/{MAX_RETRIES} after {backoff}s: {e}")
+                    time.sleep(backoff)
+
+        print(f"Error in LLM call after {MAX_RETRIES} attempts: {last_error}")
+        return {}
 
     def _parse_json_response(self, content: str) -> Dict[str, Any]:
         """Parse JSON from LLM response with robust error handling"""

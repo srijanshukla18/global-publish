@@ -2,14 +2,16 @@
 import os
 import argparse
 import sys
+import re
 from pathlib import Path
 from dotenv import load_dotenv
 from typing import Dict, Type
 
 from core.content_analyzer import ContentAnalyzer
 from core.platform_engine import PlatformAdapter
-from core.models import ContentDNA
+from core.models import ContentDNA, UserProfile
 from core.platform_recommender import PlatformRecommender
+from core.story_interview import run_interview, load_saved_profile, save_profile, quick_stage_prompt
 
 # Import Adapters explicitly for robustness
 from platforms.hackernews.adapter import HackernewsAdapter
@@ -61,26 +63,56 @@ def setup_environment():
         if not os.getenv("OPENROUTER_API_BASE"):
              os.environ["OPENROUTER_API_BASE"] = "https://openrouter.ai/api/v1"
 
+MAX_CONTENT_FILE_SIZE = 1024 * 1024  # 1MB limit for content files
+ALLOWED_EXTENSIONS = {'.md', '.txt', '.markdown'}
+
 def load_content(file_path: str) -> str:
-    """Read content from file"""
-    path = Path(file_path)
+    """Read content from file with security validations"""
+    path = Path(file_path).resolve()
+
+    # Validate file extension
+    if path.suffix.lower() not in ALLOWED_EXTENSIONS:
+        print(f"❌ Error: Unsupported file type '{path.suffix}'. Allowed: {', '.join(ALLOWED_EXTENSIONS)}")
+        sys.exit(1)
+
     if not path.exists():
         print(f"❌ Error: Content file '{file_path}' not found.")
         sys.exit(1)
+
+    # Validate file size
+    file_size = path.stat().st_size
+    if file_size > MAX_CONTENT_FILE_SIZE:
+        print(f"❌ Error: File too large ({file_size} bytes). Max: {MAX_CONTENT_FILE_SIZE} bytes")
+        sys.exit(1)
+
     return path.read_text()
+
+PLATFORM_NAME_PATTERN = re.compile(r'^[a-z0-9_]+$')
+MAX_ARTIFACT_SIZE = 512 * 1024  # 512KB limit for artifacts
+
+def validate_platform_name(platform: str) -> bool:
+    """Validate platform name to prevent path traversal"""
+    return bool(PLATFORM_NAME_PATTERN.match(platform))
 
 def save_artifact(platform: str, content: str, metadata: Dict = None):
     """Save generated content to artifacts directory"""
+    if not validate_platform_name(platform):
+        print(f"   ❌ Invalid platform name: {platform}")
+        return
+
+    if len(content.encode('utf-8')) > MAX_ARTIFACT_SIZE:
+        print(f"   ❌ Content too large. Max: {MAX_ARTIFACT_SIZE} bytes")
+        return
+
     output_dir = Path("artifacts")
     output_dir.mkdir(exist_ok=True)
-    
-    # Save main content
+
     filename = f"{platform}_post.md"
     file_path = output_dir / filename
-    
+
     with open(file_path, 'w') as f:
         f.write(content)
-        
+
     print(f"   📄 Saved to artifacts/{filename}")
 
 def print_validation_report(validation):
@@ -123,6 +155,8 @@ def main():
     parser.add_argument("--platforms", nargs="+", help="Specific platforms to generate for (overrides smart selection)")
     parser.add_argument("--all", action="store_true", help="Generate for all platforms (ignores fit analysis)")
     parser.add_argument("--model", default=default_model, help=f"LLM model to use (default: {default_model})")
+    parser.add_argument("--interview", action="store_true", help="Run story interview to gather founder narrative")
+    parser.add_argument("--setup-profile", action="store_true", help="Set up or update your professional profile")
 
     args = parser.parse_args()
 
@@ -138,6 +172,34 @@ def main():
     print("==========================================")
     print(f"🤖 Model: {args.model}")
 
+    # Load or set up user profile
+    user_profile = load_saved_profile()
+    if args.setup_profile or user_profile is None:
+        print("\n👤 Setting up your professional profile...")
+        print("   (This helps with LinkedIn targeting - your network matters)")
+        print("\n   What's your day job? (e.g., 'SRE, Backend Engineer')")
+        roles_input = input("   > ").strip()
+        roles = [r.strip() for r in roles_input.split(",")] if roles_input else []
+
+        print("\n   Who follows you on LinkedIn? (e.g., 'DevOps engineers and platform teams')")
+        linkedin_audience = input("   > ").strip()
+
+        print("\n   Which platforms do you have reputation on? (comma separated)")
+        print("   (e.g., 'hackernews, twitter, reddit')")
+        platforms_input = input("   > ").strip()
+        active_platforms = [p.strip() for p in platforms_input.split(",")] if platforms_input else []
+
+        user_profile = UserProfile(
+            professional_roles=roles,
+            linkedin_audience=linkedin_audience or "general tech professionals",
+            active_platforms=active_platforms
+        )
+        save_profile(user_profile)
+        print()
+
+    if user_profile and user_profile.professional_roles:
+        print(f"👤 Profile: {', '.join(user_profile.professional_roles)} | LinkedIn audience: {user_profile.linkedin_audience}")
+
     # 1. Analyze Content
     print(f"\n🧠 Analyzing Content DNA from '{args.content_file}'...")
     raw_content = load_content(args.content_file)
@@ -149,6 +211,27 @@ def main():
     print(f"   📊 Novelty: {dna.novelty_score} | Controversy: {dna.controversy_potential} | Evidence: {dna.show_dont_tell}")
     if dna.best_fit_communities:
         print(f"   🎯 Best Communities: {', '.join(dna.best_fit_communities[:5])}")
+
+    # Show visual opportunities
+    if dna.visual_opportunities:
+        print(f"\n   📸 VISUAL OPPORTUNITIES (include these in your posts!):")
+        for viz in dna.visual_opportunities:
+            print(f"      • {viz}")
+
+    # Show platform constraints
+    if dna.platform_constraints:
+        print(f"\n   ⚠️  PLATFORM CONSTRAINTS (limits audience):")
+        for constraint in dna.platform_constraints:
+            print(f"      • {constraint}")
+
+    # Run story interview or quick stage prompt
+    if args.interview:
+        story_context = run_interview(skip_profile=True)
+        dna.project_stage = story_context.project_stage
+        dna.founder_story = story_context.founder_story
+    else:
+        # Quick stage prompt
+        dna.project_stage = quick_stage_prompt()
 
     # 2. Determine target platforms
     if args.platforms:
@@ -166,7 +249,7 @@ def main():
         print(f"\n🔍 Analyzing platform fit...")
         from litellm import completion
         recommender = PlatformRecommender()
-        rec_prompt = recommender.build_recommendation_prompt(dna)
+        rec_prompt = recommender.build_recommendation_prompt(dna, user_profile)
 
         rec_response = completion(
             model=args.model,
@@ -182,7 +265,10 @@ def main():
         if skipped:
             print(f"\n   ⏭️  Skipping {len(skipped)} platforms (poor fit):")
             for s in skipped:
-                print(f"      • {s.platform}: {s.reason}")
+                skip_msg = f"      • {s.platform}: {s.reason}"
+                if s.constraint_warning:
+                    skip_msg += f" ⚠️ {s.constraint_warning}"
+                print(skip_msg)
 
         # Show what we're generating for
         strong_fits = [r for r in recommendations if r.fit == "strong"]
@@ -192,6 +278,13 @@ def main():
             print(f"\n   ✅ Strong fit ({len(strong_fits)}): {', '.join(r.platform for r in strong_fits)}")
         if moderate_fits:
             print(f"   🔸 Moderate fit ({len(moderate_fits)}): {', '.join(r.platform for r in moderate_fits)}")
+
+        # Show constraint warnings for selected platforms
+        platforms_with_warnings = [r for r in recommendations if r.fit != "skip" and r.constraint_warning]
+        if platforms_with_warnings:
+            print(f"\n   ⚠️  Platform-specific warnings:")
+            for r in platforms_with_warnings:
+                print(f"      • {r.platform}: {r.constraint_warning}")
 
     if not target_platforms:
         print("\n❌ No platforms selected. Your content may not be a good fit for any platform.")
@@ -235,12 +328,29 @@ def main():
 - 💡 {timing.notes}
 """
 
-            # Save Artifact with timing
+            # Build visual opportunities section
+            visual_section = ""
+            if dna.visual_opportunities:
+                visual_section = "## 📸 Visual Assets to Include\n"
+                for viz in dna.visual_opportunities:
+                    visual_section += f"- [ ] {viz}\n"
+                visual_section += "\n"
+
+            # Build constraints section
+            constraints_section = ""
+            if dna.platform_constraints:
+                constraints_section = "## ⚠️ Mention These Constraints\n"
+                for constraint in dna.platform_constraints:
+                    constraints_section += f"- {constraint}\n"
+                constraints_section += "\n"
+
+            # Save Artifact with all context
             final_output = f"""---
 platform: {platform_name}
 title: {content.title}
 status: {'generated' if validation.is_valid else 'needs_review'}
 model: {args.model}
+project_stage: {dna.project_stage}
 ---
 
 # {content.title}
@@ -248,9 +358,10 @@ model: {args.model}
 {content.body}
 
 ---
-{timing_section}
+{visual_section}{constraints_section}{timing_section}
 ---
 ## 🧠 Generation Metadata
+- Project Stage: {dna.project_stage}
 - Strategy: {content.metadata.get('engagement_strategy', 'Standard')}
 - Tags: {', '.join(content.metadata.get('tags', []))}
 - Reality Check: {content.metadata.get('reality_check', 'N/A')}
