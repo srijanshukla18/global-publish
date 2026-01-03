@@ -38,6 +38,19 @@ class ContentAnalyzer:
         10. novelty_score: How new is this? "incremental" (small improvement), "notable" (interesting approach), "breakthrough" (genuinely new)
         11. show_dont_tell: Does content have demos/screenshots/metrics? "none", "some" (mentioned but not shown), "strong" (clear evidence)
         12. best_fit_communities: List 3-5 specific communities that would care (e.g. "r/golang", "r/selfhosted", "Rust Discord", "DevOps Twitter")
+        13. visual_opportunities: List visual assets that could be created for promotion. Look for:
+            - ASCII architecture diagrams (suggest "Screenshot the ASCII diagram")
+            - Terminal output examples (suggest "Record with asciinema" or "Screenshot terminal output")
+            - Code snippets that show usage (suggest "GIF of running the command")
+            - Before/after comparisons (suggest "Side-by-side comparison image")
+            - Workflow diagrams (suggest "Create a visual flowchart")
+            Be specific about WHAT to capture, not generic.
+        14. platform_constraints: List any hardware/software/OS requirements that limit who can use this:
+            - OS requirements: "macOS only", "Linux only", "Windows only"
+            - Hardware: "Apple Silicon required", "GPU required", "Force Touch trackpad"
+            - Kernel/version: "Linux 6.12+", "Python 3.11+"
+            - Dependencies: "Requires Kubernetes", "AWS account needed"
+            If none mentioned, return empty list.
 
         JSON OUTPUT FORMAT:
         {{
@@ -52,7 +65,9 @@ class ContentAnalyzer:
             "controversy_potential": "low|medium|high",
             "novelty_score": "incremental|notable|breakthrough",
             "show_dont_tell": "none|some|strong",
-            "best_fit_communities": ["...", "..."]
+            "best_fit_communities": ["...", "..."],
+            "visual_opportunities": ["Screenshot the ASCII architecture diagram", "Record terminal demo with asciinema", ...],
+            "platform_constraints": ["macOS only", "Apple Silicon required", ...]
         }}
         """
         
@@ -83,7 +98,9 @@ class ContentAnalyzer:
                 controversy_potential=data.get("controversy_potential", "low"),
                 novelty_score=data.get("novelty_score", "incremental"),
                 show_dont_tell=data.get("show_dont_tell", "none"),
-                best_fit_communities=data.get("best_fit_communities", [])
+                best_fit_communities=data.get("best_fit_communities", []),
+                visual_opportunities=data.get("visual_opportunities", []),
+                platform_constraints=data.get("platform_constraints", [])
             )
             
         except Exception as e:

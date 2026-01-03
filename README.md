@@ -51,15 +51,19 @@ But its a chore to talk about it.
 uv sync
 cp .env.example .env  # Add your OPENROUTER_API_KEY
 
-# Run (smart mode - analyzes content and picks best platforms)
-./run.sh path/to/your/content.md
+# First run: Set up your professional profile (saved for future runs)
+# This helps with LinkedIn targeting - your network matters
+uv run python main.py content.md
+
+# Run with story interview (gathers founder narrative)
+uv run python main.py content.md --interview
 
 # This will:
-# 1. Extract content DNA (type, audience, novelty, etc.)
-# 2. Analyze which platforms are good fits
-# 3. Skip platforms that don't match (e.g., tutorials skip ProductHunt)
-# 4. Generate only for strong + moderate fits
-# 5. Include timing recommendations in each artifact
+# 1. Load your profile (roles, LinkedIn audience)
+# 2. Extract content DNA (type, audience, novelty, constraints, visual opportunities)
+# 3. Ask about project stage (experiment/mvp/beta/production)
+# 4. Analyze which platforms fit (considers your professional identity)
+# 5. Generate content with timing + visual asset checklists
 
 # Force specific platforms (override smart selection)
 uv run python main.py content.md --platforms hackernews twitter
@@ -67,9 +71,31 @@ uv run python main.py content.md --platforms hackernews twitter
 # Generate for ALL platforms (ignore fit analysis)
 uv run python main.py content.md --all
 
-# Use different model
-uv run python main.py content.md --model "openrouter/openai/gpt-4o"
+# Update your profile
+uv run python main.py content.md --setup-profile
 ```
+
+### New Features
+
+**Professional Profile** (saved to `~/.config/global-publish/profile.json`):
+- Your roles (e.g., "SRE", "Backend Engineer") help LinkedIn targeting
+- If you're an SRE posting kernel tools, LinkedIn becomes a strong fit
+- Your active platforms help prioritize where you have reputation
+
+**Story Interview** (`--interview`):
+- Gathers your founder narrative: why you built it, what you learned
+- Captures honest limitations (HN loves this)
+- Used to enrich generated content
+
+**Visual Opportunities**:
+- Extracts ASCII diagrams, terminal outputs, code examples from your README
+- Suggests: "Record with asciinema", "Screenshot the architecture diagram"
+- Included as checklist in each artifact
+
+**Platform Constraints**:
+- Detects: "macOS only", "Linux 6.12+", "Apple Silicon required"
+- Warns about incompatible communities (r/linux won't care about macOS tools)
+- Included in artifacts so you remember to mention them
 
 ## Output
 
@@ -91,16 +117,23 @@ artifacts/
 
 Each artifact includes:
 - The generated content (copy-paste ready)
+- **Visual asset checklist**: What screenshots/asciinema to create
+- **Platform constraints**: Requirements to mention in your post
 - **Timing advice**: Best days/hours to post, current status
 - **Reality check**: Prerequisites and honest expectations
 - Validation warnings (character limits, forbidden words, etc.)
 
 ## How It Works
 
-1. **Content DNA Extraction** — LLM analyzes your source to extract: value proposition, technical details, target audience, limitations, novelty, controversy potential
-2. **Smart Platform Selection** — LLM decides which platforms fit your content type (tutorials skip ProductHunt, opinion pieces skip Dev.to, etc.)
-3. **Platform Adaptation** — Each adapter has cultural rules baked in (e.g., HN hates marketing speak, Reddit needs subreddit-specific framing)
-4. **Timing & Validation** — Adds posting time recommendations and checks platform-specific rules
+1. **Profile Loading** — Loads your professional identity (roles, LinkedIn audience, active platforms)
+2. **Content DNA Extraction** — LLM analyzes your source to extract: value proposition, technical details, target audience, limitations, novelty, visual opportunities, platform constraints
+3. **Project Stage** — Quick prompt: experiment/mvp/beta/production (affects messaging)
+4. **Smart Platform Selection** — LLM decides which platforms fit, considering:
+   - Content type (tutorials skip ProductHunt)
+   - Your professional identity (SRE → LinkedIn strong for infra tools)
+   - Platform constraints (macOS-only → skip r/linux)
+5. **Platform Adaptation** — Each adapter has cultural rules baked in (e.g., HN hates marketing speak, Reddit needs subreddit-specific framing)
+6. **Artifact Generation** — Includes content + visual checklists + constraints + timing
 
 ## Architecture
 
@@ -109,7 +142,10 @@ main.py                      # CLI + orchestration
 core/
 ├── content_analyzer.py      # Extracts ContentDNA from source
 ├── platform_engine.py       # Base PlatformAdapter class
-└── models.py                # ContentDNA, PlatformContent, ValidationResult
+├── platform_recommender.py  # Smart platform selection with user profile
+├── timing_advisor.py        # Best posting times per platform
+├── story_interview.py       # Founder narrative interview mode
+└── models.py                # ContentDNA, UserProfile, PlatformContent
 platforms/
 ├── hackernews/
 │   ├── adapter.py           # Generation logic + prompts
@@ -121,6 +157,9 @@ platforms/
 │   └── subreddit_data.yaml  # Subreddit profiles
 └── [other platforms]/
     └── adapter.py           # Most platforms are single-file
+
+~/.config/global-publish/
+└── profile.json             # Your saved professional profile
 ```
 
 ## Config

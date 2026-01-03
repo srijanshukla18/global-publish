@@ -26,10 +26,35 @@ class ContentDNA:
     novelty_score: str = "incremental"  # incremental/notable/breakthrough
     show_dont_tell: str = "none"  # none/some/strong - demos, screenshots, metrics?
     best_fit_communities: List[str] = None  # specific subreddits/communities that would care
+    # Visual opportunities
+    visual_opportunities: List[str] = None  # "ASCII architecture diagram", "terminal output demo", etc.
+    # Platform constraints
+    platform_constraints: List[str] = None  # "macOS only", "Linux 6.12+", "Apple Silicon required"
+    # User-provided context (filled by interview)
+    project_stage: str = "unknown"  # experiment/mvp/beta/production
+    founder_story: str = ""  # Why you built this, personal narrative
 
     def __post_init__(self):
         if self.best_fit_communities is None:
             self.best_fit_communities = []
+        if self.visual_opportunities is None:
+            self.visual_opportunities = []
+        if self.platform_constraints is None:
+            self.platform_constraints = []
+
+
+@dataclass
+class UserProfile:
+    """User's professional identity for platform targeting"""
+    professional_roles: List[str]  # ["SRE", "Backend Engineer", "Founder"]
+    linkedin_audience: str  # "DevOps engineers and SREs" - who follows you
+    active_platforms: List[str]  # platforms where user has reputation
+
+    def __post_init__(self):
+        if self.professional_roles is None:
+            self.professional_roles = []
+        if self.active_platforms is None:
+            self.active_platforms = []
 
 
 @dataclass

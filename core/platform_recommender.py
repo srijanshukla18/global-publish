@@ -1,6 +1,6 @@
 from dataclasses import dataclass
-from typing import List, Dict
-from .models import ContentDNA
+from typing import List, Dict, Optional
+from .models import ContentDNA, UserProfile
 
 
 @dataclass
@@ -9,6 +9,7 @@ class PlatformRecommendation:
     platform: str
     fit: str  # "strong", "moderate", "weak", "skip"
     reason: str
+    constraint_warning: str = ""  # Warning about platform constraints
 
 
 class PlatformRecommender:
@@ -101,13 +102,42 @@ class PlatformRecommender:
         }
     }
 
-    def build_recommendation_prompt(self, dna: ContentDNA) -> str:
+    def build_recommendation_prompt(self, dna: ContentDNA, user_profile: Optional[UserProfile] = None) -> str:
         """Build prompt for LLM to decide platform fit"""
 
         platform_descriptions = "\n".join([
             f"- **{name}**: {profile['audience']}. Best for: {', '.join(profile['sweet_spot'])}. Needs: {profile['needs']}. Avoid if: {profile['red_flags']}"
             for name, profile in self.PLATFORM_PROFILES.items()
         ])
+
+        # User profile context
+        user_context = ""
+        if user_profile:
+            user_context = f"""
+=== USER PROFILE (IMPORTANT for LinkedIn) ===
+Professional Roles: {', '.join(user_profile.professional_roles) if user_profile.professional_roles else 'Not specified'}
+LinkedIn Audience: {user_profile.linkedin_audience or 'General tech professionals'}
+Active Platforms (has reputation): {', '.join(user_profile.active_platforms) if user_profile.active_platforms else 'None specified'}
+
+IMPORTANT: If the user's professional role matches the content domain (e.g., SRE posting about infrastructure tools),
+LinkedIn becomes a STRONG fit because their network cares about this topic.
+"""
+
+        # Platform constraints context
+        constraints_context = ""
+        if dna.platform_constraints:
+            constraints_context = f"""
+=== PLATFORM CONSTRAINTS (affects reach) ===
+This project has these requirements: {', '.join(dna.platform_constraints)}
+
+Consider these when recommending:
+- "macOS only" → r/linux won't care, but r/macapps will
+- "Apple Silicon required" → limits audience significantly
+- "Linux 6.12+" → very niche, mention in constraint_warning
+- "Requires Kubernetes" → skip consumer platforms
+
+Add a constraint_warning for platforms where this matters.
+"""
 
         return f"""Analyze this content and decide which platforms are a good fit.
 
@@ -124,7 +154,9 @@ Controversy Potential: {dna.controversy_potential}
 Novelty: {dna.novelty_score}
 Show Don't Tell (demos/screenshots/metrics): {dna.show_dont_tell}
 Best Fit Communities Suggested: {', '.join(dna.best_fit_communities) if dna.best_fit_communities else 'Not specified'}
-
+Project Stage: {dna.project_stage}
+{user_context}
+{constraints_context}
 === PLATFORMS ===
 {platform_descriptions}
 
@@ -134,13 +166,16 @@ For each platform, decide:
 - "moderate" = Decent fit, worth generating
 - "skip" = Poor fit, don't waste time
 
-Be ruthless. If content type doesn't match platform, skip it.
-A tool_launch doesn't belong on Substack. A tutorial doesn't belong on Product Hunt.
+Consider:
+1. Content type match (tool_launch doesn't belong on Substack)
+2. User's professional identity (SRE posting kernel tools → LinkedIn is strong)
+3. Platform constraints (macOS-only tool → skip r/linux)
+4. Project stage (MVP → emphasize "looking for feedback" angle)
 
 Return JSON array:
 [
-  {{"platform": "hackernews", "fit": "strong|moderate|skip", "reason": "one sentence why"}},
-  {{"platform": "twitter", "fit": "strong|moderate|skip", "reason": "..."}},
+  {{"platform": "hackernews", "fit": "strong|moderate|skip", "reason": "one sentence why", "constraint_warning": "optional warning about platform constraints"}},
+  {{"platform": "twitter", "fit": "strong|moderate|skip", "reason": "...", "constraint_warning": ""}},
   ...for all 12 platforms
 ]
 
@@ -162,7 +197,8 @@ Only return the JSON array, no other text."""
                 PlatformRecommendation(
                     platform=item.get("platform", ""),
                     fit=item.get("fit", "skip"),
-                    reason=item.get("reason", "")
+                    reason=item.get("reason", ""),
+                    constraint_warning=item.get("constraint_warning", "")
                 )
                 for item in data
             ]
