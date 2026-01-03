@@ -2,9 +2,26 @@
 
 Generates platform-native content from a single source. Analyzes your content's DNA (value prop, audience, technical details) and rebuilds it for each platform's culture and rules.
 
-**What it does:** Takes your README/docs → outputs copy-paste ready posts for platforms that fit your content.
+**What it does:** Takes your README/docs → outputs copy-paste ready posts for 12 platforms that fit your content.
 
 **What it doesn't do:** Auto-publish. You copy the generated content and post manually.
+
+## Supported Platforms
+
+| Platform | Content Type | Key Features |
+|----------|--------------|--------------|
+| **Hacker News** | Show HN | Technical depth, honesty emphasis, anti-marketing |
+| **Twitter/X** | Threads | 5-8 tweet threads, visual hooks, engagement timing |
+| **Reddit** | Self-posts | Subreddit-specific framing, value-first approach |
+| **LinkedIn** | Professional | Personal narrative, no external links in body |
+| **Medium** | Long-form | 1600-2000 word articles, SEO-optimized |
+| **Dev.to** | Tutorial | Code-focused, beginner-friendly, tagged |
+| **Product Hunt** | Launch | Tagline, maker story, media suggestions |
+| **Indie Hackers** | Founder story | Metrics, lessons learned, building in public |
+| **Substack** | Newsletter | Distinctive voice, deep dives |
+| **Hashnode** | Dev blog | SEO-optimized, series support |
+| **Lobsters** | Technical | Invite-only community, programming focus |
+| **Peerlist** | Professional | Achievement-focused, portfolio building |
 
 
 ## Before You Use This Tool
@@ -58,44 +75,72 @@ uv run python main.py content.md
 # Run with story interview (gathers founder narrative)
 uv run python main.py content.md --interview
 
-# This will:
-# 1. Load your profile (roles, LinkedIn audience)
-# 2. Extract content DNA (type, audience, novelty, constraints, visual opportunities)
-# 3. Ask about project stage (experiment/mvp/beta/production)
-# 4. Analyze which platforms fit (considers your professional identity)
-# 5. Generate content with timing + visual asset checklists
-
 # Force specific platforms (override smart selection)
 uv run python main.py content.md --platforms hackernews twitter
 
 # Generate for ALL platforms (ignore fit analysis)
 uv run python main.py content.md --all
 
+# Override default LLM model
+uv run python main.py content.md --model gpt-4o
+
 # Update your profile
 uv run python main.py content.md --setup-profile
 ```
 
-### New Features
+### CLI Flags
 
-**Professional Profile** (saved to `~/.config/global-publish/profile.json`):
-- Your roles (e.g., "SRE", "Backend Engineer") help LinkedIn targeting
-- If you're an SRE posting kernel tools, LinkedIn becomes a strong fit
-- Your active platforms help prioritize where you have reputation
+| Flag | Description |
+|------|-------------|
+| `--interview` | Interactive story interview for founder narrative |
+| `--platforms` | Force specific platforms (space-separated) |
+| `--all` | Generate for all 12 platforms |
+| `--model` | Override LLM model (default: claude-opus-4.5) |
+| `--setup-profile` | Re-run professional profile setup |
 
-**Story Interview** (`--interview`):
-- Gathers your founder narrative: why you built it, what you learned
-- Captures honest limitations (HN loves this)
-- Used to enrich generated content
+### What Happens
 
-**Visual Opportunities**:
-- Extracts ASCII diagrams, terminal outputs, code examples from your README
-- Suggests: "Record with asciinema", "Screenshot the architecture diagram"
+1. **Load your profile** — Roles, LinkedIn audience, active platforms
+2. **Extract content DNA** — Type, audience, novelty, constraints, visual opportunities
+3. **Ask project stage** — experiment / MVP / beta / production
+4. **Smart platform selection** — LLM decides which platforms fit your content
+5. **Generate & validate** — Platform-native content with validation checks
+6. **Timing advice** — Best posting windows for each platform
+
+### Features
+
+**Professional Profile** — Saved to `~/.config/global-publish/profile.json`:
+- Your roles (e.g., "SRE", "Backend Engineer") influence platform targeting
+- LinkedIn audience definition for better professional content
+- Active platforms track where you have existing reputation
+
+**Story Interview** — `--interview` flag:
+- Interactive Q&A capturing your founder narrative
+- Why you built it, what you learned, honest limitations
+- Enriches generated content with authentic voice
+
+**Visual Opportunities** — Auto-detected from your content:
+- ASCII diagrams → "Screenshot the architecture diagram"
+- Terminal outputs → "Record with asciinema"
+- Code examples → "Create a GIF demo"
 - Included as checklist in each artifact
 
-**Platform Constraints**:
-- Detects: "macOS only", "Linux 6.12+", "Apple Silicon required"
-- Warns about incompatible communities (r/linux won't care about macOS tools)
-- Included in artifacts so you remember to mention them
+**Platform Constraints** — Auto-detected requirements:
+- OS requirements (macOS only, Linux only)
+- Hardware requirements (Apple Silicon, GPU)
+- Version requirements (Python 3.11+, Linux 6.12+)
+- Warns about incompatible communities
+
+**Validation System** — Per-platform rules:
+- Character limits (Twitter 280/tweet, HN 60-char title)
+- Forbidden words (marketing buzzwords, self-promo language)
+- Format requirements (Reddit title structure, LinkedIn link placement)
+- Returns warnings, errors, and suggestions
+
+**Timing Advisor** — Optimal posting windows:
+- Platform-specific best days/hours (UTC)
+- Current window status (good/moderate/avoid)
+- Next good posting window prediction
 
 ## Output
 
@@ -140,12 +185,13 @@ Each artifact includes:
 ```
 main.py                      # CLI + orchestration
 core/
+├── models.py                # ContentDNA, UserProfile, PlatformContent
 ├── content_analyzer.py      # Extracts ContentDNA from source
-├── platform_engine.py       # Base PlatformAdapter class
+├── platform_engine.py       # Base PlatformAdapter class + LLM utilities
 ├── platform_recommender.py  # Smart platform selection with user profile
 ├── timing_advisor.py        # Best posting times per platform
 ├── story_interview.py       # Founder narrative interview mode
-└── models.py                # ContentDNA, UserProfile, PlatformContent
+└── quality_enhancer.py      # Tone validation, forbidden phrase detection
 platforms/
 ├── hackernews/
 │   ├── adapter.py           # Generation logic + prompts
@@ -157,17 +203,91 @@ platforms/
 │   └── subreddit_data.yaml  # Subreddit profiles
 └── [other platforms]/
     └── adapter.py           # Most platforms are single-file
-
+tests/                       # 17 test files (~85% coverage)
 ~/.config/global-publish/
 └── profile.json             # Your saved professional profile
 ```
 
-## Config
+## Configuration
+
+### config.toml
 
 ```toml
-# config.toml
 [llm]
 default_model = "openrouter/anthropic/claude-opus-4.5"
+
+[system]
+artifacts_dir = "artifacts"
+```
+
+### Environment Variables
+
+```bash
+# Required: LLM API (one of these)
+OPENROUTER_API_KEY=sk-or-v1-...
+OPENROUTER_API_BASE=https://openrouter.ai/api/v1
+
+# Or fallback to OpenAI
+OPENAI_API_KEY=sk-...
+
+# Optional: For future direct posting (not currently used)
+TWITTER_BEARER_TOKEN=...
+REDDIT_CLIENT_ID=...
+REDDIT_CLIENT_SECRET=...
+MEDIUM_TOKEN=...
+DEVTO_API_KEY=...
+```
+
+## Security
+
+Input validation and safety measures:
+
+- **File validation**: Extension whitelist (`.md`, `.txt`, `.markdown`)
+- **Size limits**: 1MB input files, 512KB artifacts, 256KB LLM responses
+- **Path traversal prevention**: Absolute path resolution, no `..` escapes
+- **Platform name validation**: Alphanumeric + underscore only
+- **YAML safety**: `yaml.safe_load()` for all config parsing
+- **No arbitrary code execution**: All user input is treated as data
+
+## LLM Integration
+
+Resilient API handling:
+
+- **Retry logic**: 3 attempts with exponential backoff (1s, 2s, 4s)
+- **Timeout**: 120 seconds per LLM call
+- **Graceful degradation**: Falls back to defaults on API failure
+- **JSON extraction**: Robust parsing from markdown code blocks
+- **Model flexibility**: Override via `--model` flag or config.toml
+
+## Testing
+
+```bash
+# Run all tests
+uv run pytest
+
+# Run with coverage
+uv run pytest --cov=core --cov=platforms
+
+# Run specific test file
+uv run pytest tests/test_hackernews_validator.py -v
+```
+
+Test coverage: ~85% across 17 test files. Key areas tested:
+- Content DNA extraction
+- Platform-specific validation rules
+- LLM response parsing
+- Edge cases (empty input, Unicode, oversized content)
+
+## Dependencies
+
+```
+Python >= 3.11
+
+litellm>=1.80.11      # LLM abstraction layer
+openai>=2.14.0        # OpenAI client
+python-dotenv>=1.2.1  # Environment variable loading
+pyyaml>=6.0.3         # YAML parsing
+tomli>=2.3.0          # TOML parsing
 ```
 
 ## Adding Platforms
@@ -176,3 +296,35 @@ default_model = "openrouter/anthropic/claude-opus-4.5"
 2. Inherit from `PlatformAdapter`
 3. Implement `generate_content()` and `validate_content()`
 4. Register in `main.py` ADAPTER_REGISTRY
+
+Example minimal adapter:
+
+```python
+from core.platform_engine import PlatformAdapter
+from core.models import ContentDNA, PlatformContent, ValidationResult
+
+class YourPlatformAdapter(PlatformAdapter):
+    def generate_content(self, dna: ContentDNA) -> PlatformContent:
+        prompt = self._build_prompt(dna)
+        response = self._make_llm_call(prompt)
+        return PlatformContent(
+            platform="yourplatform",
+            title=response.get("title", ""),
+            body=response.get("body", ""),
+            metadata=response.get("metadata", {})
+        )
+
+    def validate_content(self, content: PlatformContent) -> ValidationResult:
+        errors, warnings, suggestions = [], [], []
+        # Add your validation rules
+        return ValidationResult(
+            is_valid=len(errors) == 0,
+            errors=errors,
+            warnings=warnings,
+            suggestions=suggestions
+        )
+```
+
+## License
+
+MIT
